@@ -1,10 +1,13 @@
 {
     "name": "beholdr",
     "version": "0.0.1",
-    "description": "",
-    "author": "",
-    "private": true,
-    "license": "UNLICENSED",
+    "description": "Javascript proxy server for localhost development",
+    "author": "Alykam Burdzaki (alykam@gmail.com)",
+    "private": false,
+    "license": "MIT",
+    "bin": {
+        "beholdr": "./dist/main.js"
+    },
     "scripts": {
         "prebuild": "rimraf dist",
         "build": "nest build",
