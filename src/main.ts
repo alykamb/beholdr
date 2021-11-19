@@ -8,4 +8,4 @@ async function bootstrap() {
     await CommandFactory.run(AppModule)
 }
 
-void bootstrap()
+void bootstrap().catch(console.error)

@@ -1,6 +1,9 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 
-function* getPort(min = 8000) {
+import { Config } from '../models/config.model'
+import { CONFIG } from '../providers/config.provider'
+
+function* getPort(min = 7880) {
     let i = min
     while (true) yield ++i
 }
@@ -10,8 +13,8 @@ export class PortService {
     private ports = new Map<string, number>()
     private getNewPort!: Generator<number>
 
-    constructor() {
-        this.getNewPort = getPort()
+    constructor(@Inject(CONFIG) private config: Config) {
+        this.getNewPort = getPort(config.minPort)
     }
 
     public getPort(name: string) {
