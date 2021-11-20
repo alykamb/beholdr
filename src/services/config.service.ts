@@ -82,7 +82,7 @@ export class ConfigService {
 
     public async getConfig() {
         try {
-            return await this.readConfigFile()
+            return new Config(await this.readConfigFile())
         } catch (err) {
             return new Config()
         }

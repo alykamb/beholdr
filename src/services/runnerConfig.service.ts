@@ -20,10 +20,6 @@ export class RunnerConfigService {
         return (await this.configService.loadConfigFile<RunnerConfig>()).config
     }
 
-    public get proxyUrl() {
-        return `${this.config.https ? 'https' : 'http'}://${this.config.host}:${this.config.port}`
-    }
-
     public async resolveApps(path = process.cwd(), app?: RunnerConfig): Promise<RunnerConfig[]> {
         if (!app) {
             app = await this.loadConfig()
@@ -41,8 +37,7 @@ export class RunnerConfigService {
         if (app.ports) {
             for (const key of Object.keys(app.ports)) {
                 const p = app.ports[key]
-                const value =
-                    p.value || (await this.axios.get(`${this.proxyUrl}/port/${app.id}`)).data
+                const value = p.value || (await this.axios.get(`/ports/${app.id}-${key}`)).data
 
                 ports[key] = value
 
@@ -54,7 +49,7 @@ export class RunnerConfigService {
 
         app.port = port
         app.env = {
-            ...(await this.axios.get(`${this.proxyUrl}/env`)),
+            ...(await this.axios.get(`/env`)),
             ...ports,
             ...(app.env || {}),
         }
