@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import * as chalk from 'chalk'
+import chalk from 'chalk'
 import { cp, readFile, rm, writeFile } from 'fs/promises'
 import { defaultsDeep } from 'lodash'
 import { basename, resolve } from 'path'

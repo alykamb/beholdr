@@ -1,4 +1,4 @@
-import * as chalk from 'chalk'
+import chalk from 'chalk'
 import { CommandRunner, SubCommand } from 'nest-commander'
 
 import { ConfigService } from '../services/config.service'

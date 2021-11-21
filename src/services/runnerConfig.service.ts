@@ -75,7 +75,7 @@ export class RunnerConfigService {
                     app: a.id,
                     id: c(app.id, a.id),
                     name: c(app.name, a.name),
-                    src: join(path, app.src, a.src),
+                    src: join(path, app.src || '', a.src || ''),
                 }
 
                 if (a.apps) {
