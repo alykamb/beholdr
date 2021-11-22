@@ -10,7 +10,6 @@ import { configProvider } from './providers/config.provider'
 import { ConfigService } from './services/config.service'
 import { PortService } from './services/port.service'
 import { RunnerConfigService } from './services/runnerConfig.service'
-import { StdinService } from './services/stdin.service'
 
 @Module({
     imports: [],
@@ -22,7 +21,6 @@ import { StdinService } from './services/stdin.service'
         ConfigListCommand,
         StartCommand,
         RunCommand,
-        StdinService,
         ConfigService,
         RunnerConfigService,
         configProvider,

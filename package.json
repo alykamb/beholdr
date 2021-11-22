@@ -1,10 +1,11 @@
 {
     "name": "beholdr",
-    "version": "0.0.1",
+    "version": "0.3.1",
     "description": "Javascript proxy server for localhost development",
     "author": "Alykam Burdzaki (alykam@gmail.com)",
     "private": false,
     "license": "MIT",
+    "repository": "https://github.com/alykamb/beholdr",
     "bin": {
         "beholdr": "./dist/main.js"
     },
@@ -33,14 +34,15 @@
         "fastify": "^3.24.0",
         "http-proxy": "^1.18.1",
         "ink": "^3.2.0",
+        "ink-spinner": "^4.0.3",
         "lodash": "^4.17.21",
         "nest-commander": "^2.3.4",
         "react": "^17.0.2",
-        "readline": "^1.3.0",
         "reflect-metadata": "^0.1.13",
         "rimraf": "^3.0.2",
         "rxjs": "^7.2.0",
         "socket.io": "^4.4.0",
+        "socket.io-client": "^4.4.0",
         "tree-kill": "^1.2.2"
     },
     "devDependencies": {

@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { AxiosInstance } from 'axios'
 import { join } from 'path'
+import { BehaviorSubject, Subject } from 'rxjs'
 
 import { Config } from '../models/config.model'
 import { RunnerConfig } from '../models/runnerConfig.model'
@@ -16,15 +17,47 @@ export class RunnerConfigService {
         @Inject(CONFIG) private config: Config,
     ) {}
 
-    public async loadConfig(): Promise<RunnerConfig> {
-        return (await this.configService.loadConfigFile<RunnerConfig>()).config
+    public async loadConfig(root = '.'): Promise<RunnerConfig> {
+        return (await this.configService.loadConfigFile<RunnerConfig>(root)).config
     }
 
     public async resolveApps(path = process.cwd(), app?: RunnerConfig): Promise<RunnerConfig[]> {
         if (!app) {
             app = await this.loadConfig()
         }
-        const resolveApp = (a: RunnerConfig) => {
+        const resolveApp = async (a: RunnerConfig) => {
+            let port: number
+            const ports = {}
+            if (a.ports) {
+                for (const key of Object.keys(a.ports)) {
+                    const p = a.ports[key]
+                    const value = p.value || (await this.axios.get(`/ports/${a.id}-${key}`)).data
+
+                    ports[key] = value
+
+                    if (p.default) {
+                        port = value
+                    }
+                }
+            }
+
+            a.port = port
+            a.env = {
+                ...(await this.axios.get(`/env`)),
+                ...ports,
+                ...(a.env || {}),
+            }
+
+            if (a.envMappings) {
+                a.env = this.mapEnvVars(a.env, a.envMappings)
+            }
+
+            delete a.ports
+
+            a.stop$ = new Subject()
+            a.restart$ = new Subject()
+            a.status$ = new BehaviorSubject('idle')
+            a.output$ = new BehaviorSubject([])
             return [a]
         }
 
@@ -32,46 +65,25 @@ export class RunnerConfigService {
             return resolveApp(app)
         }
 
-        let port: number
-        const ports = {}
-        if (app.ports) {
-            for (const key of Object.keys(app.ports)) {
-                const p = app.ports[key]
-                const value = p.value || (await this.axios.get(`/ports/${app.id}-${key}`)).data
-
-                ports[key] = value
-
-                if (p.default) {
-                    port = value
-                }
-            }
-        }
-
-        app.port = port
-        app.env = {
-            ...(await this.axios.get(`/env`)),
-            ...ports,
-            ...(app.env || {}),
-        }
-
-        if (app.envMappings) {
-            app.env = this.mapEnvVars(app.env, app.envMappings)
-        }
-
-        delete app.ports
-
-        const c = (...s: string[]) => s.filter((i) => !!i).join(':')
+        const c = (...s: string[]) => (s || []).filter((i) => !!i).join(':')
 
         return Promise.all(
             app.apps.map(async (a) => {
+                if (typeof a === 'string') {
+                    a = await this.loadConfig(a)
+                }
+
                 const newApp = {
                     ...a,
+                    ports: {
+                        ...(app.ports || {}),
+                        ...(a.ports || {}),
+                    },
                     env: {
                         ...(app.env || {}),
                         ...(a.env || {}),
                     },
                     parent: app.id,
-                    port,
                     app: a.id,
                     id: c(app.id, a.id),
                     name: c(app.name, a.name),

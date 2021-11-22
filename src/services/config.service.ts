@@ -11,7 +11,8 @@ const CONFIG_FILE = '__beholdr__'
 @Injectable()
 export class ConfigService {
     public async loadConfigFile<T = any>(
-        paths: string[] = ['.beholdrrc', '.beholdrrc.js', 'beholder.json'],
+        root = '.',
+        paths: string[] = ['.beholdrrc', '.beholdrrc.js'],
     ): Promise<{ config: T; path: string }> {
         let config: T
         let path: string
@@ -19,10 +20,10 @@ export class ConfigService {
             try {
                 if (path.endsWith('.js')) {
                     // eslint-disable-next-line @typescript-eslint/no-var-requires
-                    config = require(resolve(process.cwd(), path))
+                    config = require(resolve(process.cwd(), root, path))
                     break
                 } else {
-                    const contents = await readFile(resolve(process.cwd(), path))
+                    const contents = await readFile(resolve(process.cwd(), root, path))
                     config = JSON.parse(contents.toString())
                     break
                 }
@@ -33,7 +34,7 @@ export class ConfigService {
     }
 
     public async fromConfigFile(paths?: string[]) {
-        const { config, path } = await this.loadConfigFile<Config>(paths)
+        const { config, path } = await this.loadConfigFile<Config>('.', paths)
 
         if (!config) {
             console.log(chalk.red(`No configuration file found in ${path}`))

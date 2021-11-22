@@ -1,33 +1,37 @@
-import { Box, Text, useFocus, useInput } from 'ink'
+import { Box, Text, useFocus } from 'ink'
+import Spinner from 'ink-spinner'
 import React, { useContext, useEffect } from 'react'
 
 import { RunnerConfig } from '../../models/runnerConfig.model'
 import { AppsContext } from '../contexts/apps.context'
+import { useAppStatus } from '../hooks/useAppStatus.hook'
 import { colors } from '../theme/colors'
 
 export const AppItem = (props: { app: RunnerConfig }) => {
     const { isFocused } = useFocus({ autoFocus: true, id: props.app.id })
-    const { setActionsView, setSelected } = useContext(AppsContext)
-
-    useInput((_input, key) => {
-        if (key.return && isFocused) {
-            setActionsView(props.app)
-        }
-    })
+    const { setSelected } = useContext(AppsContext)
 
     useEffect(() => {
         if (isFocused) {
             setSelected(props.app)
         }
-    }, [isFocused])
+    }, [isFocused, setSelected])
+
+    const status = useAppStatus(props.app)
+    const running = status === 'running'
+    const error = status === 'error'
+
+    let color = '#fff'
+    if (error) {
+        color = colors.danger
+    } else if (running) {
+        color = colors.success
+    }
 
     return (
-        <Box marginX={1} paddingX={1}>
-            <Text
-                backgroundColor={isFocused ? colors.primary : 'black'}
-                color={isFocused ? '#fff' : colors.base}
-            >
-                {` ${props.app.name} ${props.app.id}`}
+        <Box marginRight={2}>
+            <Text backgroundColor={isFocused ? colors.primary : 'black'} color={color}>
+                {props.app.id} {running ? <Spinner type="circleHalves" /> : error ? '💥' : ' '}
             </Text>
         </Box>
     )

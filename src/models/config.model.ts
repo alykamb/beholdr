@@ -2,7 +2,10 @@ import { defaultsDeep } from 'lodash'
 
 export class Config {
     public port = 7878
-    public wsPort = 7879
+    public ws? = {
+        port: 7879,
+        host: 'beholdr.stuns.org',
+    }
     public minPort = 7880
     public host = 'localhost'
     public https = false

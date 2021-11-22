@@ -3,8 +3,9 @@ import { AxiosInstance } from 'axios'
 import { spawn } from 'child_process'
 import { Command, CommandRunner } from 'nest-commander'
 import { resolve } from 'path'
-import readline from 'readline'
-import { combineLatestWith, Observable, startWith } from 'rxjs'
+import { take } from 'rxjs'
+import { io, Socket } from 'socket.io-client'
+import kill from 'tree-kill'
 
 import { renderOutput } from '../cli/Main'
 import { Config } from '../models/config.model'
@@ -12,7 +13,7 @@ import { RunnerConfig } from '../models/runnerConfig.model'
 import { AXIOS } from '../providers/axios.provider'
 import { CONFIG } from '../providers/config.provider'
 import { RunnerConfigService } from '../services/runnerConfig.service'
-import { StdinService } from '../services/stdin.service'
+
 @Command({
     name: 'run',
     arguments: '[...scripts]',
@@ -20,66 +21,104 @@ import { StdinService } from '../services/stdin.service'
 export class RunCommand implements CommandRunner {
     constructor(
         private runnerConfigService: RunnerConfigService,
-        private stdinService: StdinService,
         @Inject(AXIOS) private axios: AxiosInstance,
         @Inject(CONFIG) private config: Config,
     ) {}
 
-    public async run(inputs: string[]): Promise<void> {
-        const mainApp = await this.runnerConfigService.loadConfig()
-        const apps = await this.runnerConfigService.resolveApps(process.cwd(), mainApp)
+    public async run(): Promise<void> {
+        let socket: Socket
+        if (this.config.ws) {
+            try {
+                socket = io(`http://${this.config.ws.host}:${this.config.ws.port}`)
 
-        renderOutput(apps, (script: string, app: RunnerConfig) => {
-            return spawn(app.scripts[script], {
+                socket = await new Promise<Socket>((resolve) => {
+                    socket.on('connect', () => resolve(socket))
+                    socket.on('connect_error', () => resolve(null))
+                })
+            } catch (e) {}
+        }
+
+        const runApp = (script: string, app: RunnerConfig): void => {
+            app.output$.next([])
+            app.status$.next('running')
+
+            if (socket) {
+                socket.emit('app:running', {
+                    subdomain: app.subdomain,
+                    target: `localhost:${app.port}`,
+                })
+            }
+
+            const p = spawn(app.scripts[script], {
                 shell: true,
                 cwd: resolve(process.cwd(), app.src),
+                stdio: ['ignore', 'pipe', 'pipe'],
                 env: {
                     ...process.env,
                     PORT: 3000,
                 },
             } as any)
-        })
-        // const box = (await import('boxen')).default
-        // this.stdinService
-        //     .init()
-        //     .pipe(
-        //         startWith(null),
-        //         combineLatestWith(
-        //             new Observable<{ x: number; y: number }>((observer) => {
-        //                 const onResize = () => {
-        //                     observer.next({
-        //                         x: process.stdout.columns,
-        //                         y: process.stdout.rows,
-        //                     })
-        //                 }
 
-        //                 onResize()
-        //                 process.stdout.on('resize', onResize)
-        //                 return () => process.stdout.off('resize', onResize)
-        //             }),
-        //         ),
-        //     )
-        //     .subscribe(([key, size]) => this.draw(box, key, size))
+            let output = []
 
-        // if (apps[0].subdomain) {
-        //     await this.axios.post('/hosts', {
-        //         target: 'localhost:3000',
-        //         host: this.config.getUrl(false, apps[0].subdomain),
-        //     })
-        // }
-    }
+            const pushMessage = (chunk: Buffer) => {
+                const message = chunk.toString()
+                output = [
+                    ...output,
+                    ...message
+                        .replace(/(\r\n|\n|\r)/gm, '\n')
+                        .split('\n')
+                        .filter((str) => !!str),
+                ]
 
-    public draw(key: readline.Key, size: { x: number; y: number }) {
-        console.clear()
-        console.log(key, size)
-        console
-            .log
-            // box('unicorns love rainbows', {
-            //     title: 'magical',
-            //     titleAlignment: 'center',
-            //     width: size.x,
-            //     borderStyle: 'round',
-            // }),
-            ()
+                app.output$.next(output)
+            }
+
+            p.stdout.on('data', pushMessage)
+            p.stderr.on('data', pushMessage)
+
+            let closed = false
+            let restart = false
+
+            p.once('exit', (code) => {
+                p.stdout.off('data', pushMessage)
+                p.stderr.off('data', pushMessage)
+                app.status$.next(code && !closed ? 'error' : 'idle')
+
+                if (code && !closed) {
+                    if (socket) {
+                        socket.emit('app:error', {
+                            subdomain: app.subdomain,
+                            error: app.output$.value?.[app.output$.value?.length - 1],
+                        })
+                    }
+                    app.status$.next('error')
+                } else {
+                    if (socket) {
+                        socket.emit('app:exit', {
+                            subdomain: app.subdomain,
+                        })
+                    }
+                    app.status$.next('idle')
+                }
+                if (restart) {
+                    setTimeout(() => runApp(script, app), 200)
+                }
+            })
+
+            app.stop$.pipe(take(1)).subscribe(() => {
+                closed = true
+                if (p?.pid) {
+                    kill(p.pid)
+                }
+            })
+
+            app.restart$.pipe(take(1)).subscribe(() => {
+                restart = true
+                app.stop$.next()
+            })
+        }
+
+        renderOutput(() => this.runnerConfigService.resolveApps(), runApp)
     }
 }

@@ -8,6 +8,7 @@ import https from 'https'
 import { Command, CommandRunner } from 'nest-commander'
 import { Socket } from 'net'
 import { resolve } from 'path'
+import { Server } from 'socket.io'
 
 import { Config } from '../models/config.model'
 import { CONFIG } from '../providers/config.provider'
@@ -33,8 +34,35 @@ export class StartCommand implements CommandRunner {
 
         await this.fastify.listen(port, '0.0.0.0')
 
+        console.log(this.config.ws)
+        if (this.config.ws) {
+            const server = http.createServer()
+            const io = new Server(server)
+
+            io.on('connection', (socket) => {
+                socket.on('app:running', ({ subdomain, target }) => {
+                    console.log('running', subdomain, target)
+                    this.hosts.set(`${subdomain}.${this.config.host}:${this.config.port}`, target)
+                })
+
+                socket.on('app:exit', ({ subdomain }) => {
+                    console.log('exit', subdomain)
+                    this.hosts.delete(`${subdomain}.${this.config.host}:${this.config.port}`)
+                })
+
+                socket.on('app:error', ({ subdomain }) => {
+                    console.log('error', subdomain)
+                    this.hosts.delete(`${subdomain}.${this.config.host}:${this.config.port}`)
+                })
+            })
+
+            server.listen(this.config.ws.port, () => {
+                console.log(`socket server listening on port ${this.config.ws.port}`)
+            })
+        }
+
         console.log(
-            chalk.green(`Beholdr ${this.config.https ? 'secure' : ''} proxy started on port`),
+            chalk.green(`Beholdr${this.config.https ? ' secure ' : ' '}proxy started on port`),
             chalk.inverse(port),
         )
     }
