@@ -55,7 +55,7 @@ export class RunCommand implements CommandRunner {
                 stdio: ['ignore', 'pipe', 'pipe'],
                 env: {
                     ...process.env,
-                    PORT: 3000,
+                    ...app.env,
                 },
             } as any)
 

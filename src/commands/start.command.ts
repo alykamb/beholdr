@@ -41,8 +41,13 @@ export class StartCommand implements CommandRunner {
 
             io.on('connection', (socket) => {
                 socket.on('app:running', ({ subdomain, target }) => {
-                    console.log('running', subdomain, target)
-                    this.hosts.set(`${subdomain}.${this.config.host}:${this.config.port}`, target)
+                    if (subdomain) {
+                        console.log('running', subdomain, target)
+                        this.hosts.set(
+                            `${subdomain}.${this.config.host}:${this.config.port}`,
+                            target,
+                        )
+                    }
                 })
 
                 socket.on('app:exit', ({ subdomain }) => {

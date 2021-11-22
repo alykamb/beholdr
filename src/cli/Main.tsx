@@ -20,10 +20,15 @@ export const Main = (props: {
 
     const { time, data: apps } = useRetryTimer<RunnerConfig[]>(
         () =>
-            props.getApps().then((apps) => {
-                setSelected(apps?.[0])
-                return apps
-            }),
+            props
+                .getApps()
+                .then((apps) => {
+                    setSelected(apps?.[0])
+                    return apps
+                })
+                .catch((err) => {
+                    throw err
+                }),
         3000,
     )
 

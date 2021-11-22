@@ -1,8 +1,6 @@
 import { Box, Text, useInput } from 'ink'
-import { StringChain } from 'lodash'
 import React from 'react'
 import { useState } from 'react'
-import { of } from 'rxjs'
 
 import { colors } from '../theme/colors'
 
@@ -25,7 +23,7 @@ export const Log = ({ messages, appId, height }: LogProps) => {
     })
 
     useInput((input, key) => {
-        const value = +key.upArrow * -1 + +key.downArrow + +key.pageDown * -10 + +key.pageUp * 10
+        const value = +key.upArrow * -1 + +key.downArrow + +key.pageDown * 10 + +key.pageUp * +10
         setOffset((off) => {
             let o = off[appId] || numberOfLines
             if (followNew[appId] ?? true) {

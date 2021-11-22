@@ -4,7 +4,7 @@ export class Config {
     public port = 7878
     public ws? = {
         port: 7879,
-        host: 'beholdr.stuns.org',
+        host: 'localhost',
     }
     public minPort = 7880
     public host = 'localhost'
@@ -29,6 +29,10 @@ export class Config {
     }
 
     constructor(arg?: Partial<Config>) {
-        defaultsDeep(this, arg)
+        if (arg) {
+            Object.entries(defaultsDeep(arg, this)).forEach(([key, value]) => {
+                this[key] = value
+            })
+        }
     }
 }

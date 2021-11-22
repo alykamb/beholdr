@@ -13,7 +13,7 @@ export const axiosProvider: FactoryProvider<AxiosInstance> = {
             httpsAgent: new Agent({
                 rejectUnauthorized: false,
             }),
-            baseURL: `${config.https ? 'https' : 'http'}://${config.host}:${config.port}`,
+            baseURL: `http://localhost:${config.port}`,
         }),
     inject: [CONFIG],
 }

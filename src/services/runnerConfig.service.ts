@@ -32,7 +32,7 @@ export class RunnerConfigService {
                 for (const key of Object.keys(a.ports)) {
                     const p = a.ports[key]
                     const value =
-                        p.value || (await this.axios.get(`/ports/${a.app || a.id}-${key}`)).data
+                        p.value || (await this.axios.get(`/ports/${p.id || a.id}-${key}`)).data
 
                     ports[key] = value
 
@@ -44,7 +44,7 @@ export class RunnerConfigService {
 
             a.port = port
             a.env = {
-                ...(await this.axios.get(`/env`)),
+                ...((await this.axios.get(`/env`))?.data || {}),
                 ...ports,
                 ...(a.env || {}),
             }
@@ -71,7 +71,12 @@ export class RunnerConfigService {
         return Promise.all(
             app.apps.map(async (a) => {
                 if (typeof a === 'string') {
+                    const src = a
                     a = await this.loadConfig(a)
+                    if (!a) {
+                        return null
+                    }
+                    a.src = join(src, a.src)
                 }
 
                 const newApp = {
@@ -88,7 +93,7 @@ export class RunnerConfigService {
                     app: app.id || a.id,
                     id: c(app.id, a.id),
                     name: c(app.name, a.name),
-                    src: join(path, app.src || '', a.src || ''),
+                    src: join(app.src || '', a.src || ''),
                 }
 
                 if (a.apps) {
@@ -96,7 +101,7 @@ export class RunnerConfigService {
                 }
                 return resolveApp(newApp)
             }),
-        ).then((apps) => apps.flat())
+        ).then((apps) => apps.flat().filter((app) => !!app))
     }
 
     public mapEnvVars(
