@@ -1,5 +1,4 @@
 import { Box, Text, useFocus } from 'ink'
-import Spinner from 'ink-spinner'
 import React, { useContext, useEffect } from 'react'
 
 import { RunnerConfig } from '../../models/runnerConfig.model'
@@ -31,7 +30,7 @@ export const AppItem = (props: { app: RunnerConfig }) => {
     return (
         <Box marginRight={2}>
             <Text backgroundColor={isFocused ? colors.primary : 'black'} color={color}>
-                {props.app.id} {running ? <Spinner type="circleHalves" /> : error ? '💥' : ' '}
+                {props.app.id} {running ? '🟢' : error ? '💥' : ' '}
             </Text>
         </Box>
     )
