@@ -30,7 +30,7 @@ export const AppItem = (props: { app: RunnerConfig }) => {
     return (
         <Box marginRight={2}>
             <Text backgroundColor={isFocused ? colors.primary : 'black'} color={color}>
-                {props.app.id} {running ? '🟢' : error ? '💥' : ' '}
+                {props.app.id} {error ? '.err.' : ' '}
             </Text>
         </Box>
     )

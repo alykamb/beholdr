@@ -99,9 +99,9 @@ export const AppScripts = ({ run }: AppScriptsProps) => {
                 changeSelected(changeHover(n - 1, true))
             }
         } else {
-            if (input === 'd' && key.ctrl) {
+            if (input === 'd') {
                 app.stop$.next()
-            } else if (input === 'r' && key.ctrl) {
+            } else if (input === 'r') {
                 app.restart$.next()
             }
         }
@@ -125,7 +125,7 @@ export const AppScripts = ({ run }: AppScriptsProps) => {
                     </Text>
                 ) : (
                     <Text>
-                        Use {'<ctrl> + <d>'} to stop. {'<ctrl> + <r>'} to restart
+                        Use {'<d>'} to stop. {'<r>'} to restart
                     </Text>
                 )}
             </Box>

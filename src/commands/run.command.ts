@@ -108,6 +108,8 @@ export class RunCommand implements CommandRunner {
 
             app.stop$.pipe(take(1)).subscribe(() => {
                 closed = true
+                output = []
+                app.output$.next(output)
                 if (p?.pid) {
                     kill(p.pid)
                 }

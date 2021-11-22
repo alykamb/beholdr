@@ -1,6 +1,6 @@
 {
     "name": "beholdr",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "Javascript proxy server for localhost development",
     "author": "Alykam Burdzaki (alykam@gmail.com)",
     "private": false,
