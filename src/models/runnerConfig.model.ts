@@ -7,5 +7,6 @@ export class RunnerConfig extends App {
     public stop$: Subject<void>
     public restart$: Subject<void>
     public status$: BehaviorSubject<'idle' | 'running' | 'error'>
+    public app?: string
     public apps?: Array<RunnerConfig | string>
 }

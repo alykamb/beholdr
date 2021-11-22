@@ -31,7 +31,8 @@ export class RunnerConfigService {
             if (a.ports) {
                 for (const key of Object.keys(a.ports)) {
                     const p = a.ports[key]
-                    const value = p.value || (await this.axios.get(`/ports/${a.id}-${key}`)).data
+                    const value =
+                        p.value || (await this.axios.get(`/ports/${a.app || a.id}-${key}`)).data
 
                     ports[key] = value
 
@@ -84,7 +85,7 @@ export class RunnerConfigService {
                         ...(a.env || {}),
                     },
                     parent: app.id,
-                    app: a.id,
+                    app: app.id || a.id,
                     id: c(app.id, a.id),
                     name: c(app.name, a.name),
                     src: join(path, app.src || '', a.src || ''),
