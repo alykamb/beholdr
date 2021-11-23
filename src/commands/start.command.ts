@@ -1,4 +1,4 @@
-import { Inject } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import chalk from 'chalk'
 import fastify, { FastifyInstance, FastifyServerFactory, RouteHandler } from 'fastify'
 import { readFile } from 'fs/promises'
@@ -18,13 +18,15 @@ import { PortService } from '../services/port.service'
     name: 'start',
     options: { isDefault: true },
 })
+@Injectable()
 export class StartCommand implements CommandRunner {
     private fastify: FastifyInstance
     private hosts = new Map<string, string>()
+    private env: Record<string, string> = {}
 
     constructor(private portService: PortService, @Inject(CONFIG) private config: Config) {}
 
-    public async run(): Promise<void> {
+    public async createProxyService() {
         const port = this.config.port
 
         const serverFactory = await this.serverFactory()
@@ -72,6 +74,10 @@ export class StartCommand implements CommandRunner {
         )
     }
 
+    public async run(): Promise<void> {
+        return this.createProxyService()
+    }
+
     private registerHost: RouteHandler = (req, res) => {
         const { target, host } = req.body as any
         if (this.hosts.get(host)) {
@@ -89,10 +95,13 @@ export class StartCommand implements CommandRunner {
     }
 
     private getEnv: RouteHandler = (req, res) => {
-        void res.status(200).send(this.config.defaultEnv)
+        void res.status(200).send({ ...this.config.defaultEnv, ...this.env })
     }
 
     private getPort: RouteHandler = (req, res) => {
+        const name = (req.params as any).name
+        const port = this.portService.getPort(name)
+        this.env[this.portService.getPortEnv(name)] = port + ''
         void res.status(200).send(this.portService.getPort((req.params as any).name))
     }
 

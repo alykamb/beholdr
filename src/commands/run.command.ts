@@ -1,7 +1,7 @@
 import { Inject } from '@nestjs/common'
 import { AxiosInstance } from 'axios'
 import { spawn } from 'child_process'
-import { Command, CommandRunner } from 'nest-commander'
+import { Command, CommandRunner, Option } from 'nest-commander'
 import { resolve } from 'path'
 import { take } from 'rxjs'
 import { io, Socket } from 'socket.io-client'
@@ -25,8 +25,10 @@ export class RunCommand implements CommandRunner {
         @Inject(CONFIG) private config: Config,
     ) {}
 
-    public async run(): Promise<void> {
+    public async run(_inputs: string[], options: Record<string, any>): Promise<void> {
         let socket: Socket
+        console.log(options)
+
         if (this.config.ws) {
             try {
                 socket = io(`http://${this.config.ws.host}:${this.config.ws.port}`)
@@ -38,7 +40,16 @@ export class RunCommand implements CommandRunner {
             } catch (e) {}
         }
 
-        const runApp = (script: string, app: RunnerConfig): void => {
+        const runApp = async (script: string, app: RunnerConfig): Promise<void> => {
+            let env = {
+                ...((await this.axios.get(`/env`))?.data || {}),
+                ...app.env,
+            }
+
+            if (app.envMappings) {
+                env = this.runnerConfigService.mapEnvVars(env, app.envMappings)
+            }
+
             app.output$.next([])
             app.status$.next('running')
 
@@ -55,7 +66,7 @@ export class RunCommand implements CommandRunner {
                 stdio: ['ignore', 'pipe', 'pipe'],
                 env: {
                     ...process.env,
-                    ...app.env,
+                    ...env,
                 },
             } as any)
 
@@ -122,5 +133,12 @@ export class RunCommand implements CommandRunner {
         }
 
         renderOutput(() => this.runnerConfigService.resolveApps(), runApp)
+    }
+
+    @Option({
+        flags: '-s, --start',
+    })
+    public parseStart() {
+        return true
     }
 }
