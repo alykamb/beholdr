@@ -18,14 +18,19 @@ export class PortService {
     }
 
     public getPort(name: string) {
-        let port = this.ports.get(name)
+        const env = this.getPortEnv(name)
+        let port = this.ports.get(env)
 
         if (!port) {
             port = this.getNewPort.next().value
-            this.ports.set(name, port)
+            this.ports.set(env, port)
         }
 
         return port
+    }
+
+    public getPortEnv(name: string): `${Uppercase<typeof name>}_SERVICE_PORT` {
+        return `${name.toUpperCase()}_SERVICE_PORT`
     }
 
     public listPorts(): Record<string, number> {

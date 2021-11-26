@@ -1,4 +1,4 @@
-import { Inject } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import chalk from 'chalk'
 import fastify, { FastifyInstance, FastifyServerFactory, RouteHandler } from 'fastify'
 import { readFile } from 'fs/promises'
@@ -18,13 +18,22 @@ import { PortService } from '../services/port.service'
     name: 'start',
     options: { isDefault: true },
 })
+@Injectable()
 export class StartCommand implements CommandRunner {
     private fastify: FastifyInstance
     private hosts = new Map<string, string>()
+    private fallbackHosts = new Map<string, string>()
+    private env: Record<string, string> = {}
 
     constructor(private portService: PortService, @Inject(CONFIG) private config: Config) {}
 
-    public async run(): Promise<void> {
+    private setHost =
+        (hosts = this.hosts) =>
+        (target: string, subdomain: string, host = this.config.host) => {
+            hosts.set(`${subdomain}.${host || this.config.host}:${this.config.port}`, target)
+        }
+
+    public async createProxyService() {
         const port = this.config.port
 
         const serverFactory = await this.serverFactory()
@@ -40,13 +49,10 @@ export class StartCommand implements CommandRunner {
             const io = new Server(server)
 
             io.on('connection', (socket) => {
-                socket.on('app:running', ({ subdomain, target }) => {
+                socket.on('app:running', ({ subdomain, target, host }) => {
                     if (subdomain) {
                         console.log('running', subdomain, target)
-                        this.hosts.set(
-                            `${subdomain}.${this.config.host}:${this.config.port}`,
-                            target,
-                        )
+                        this.setHost()(target, subdomain, host)
                     }
                 })
 
@@ -72,6 +78,10 @@ export class StartCommand implements CommandRunner {
         )
     }
 
+    public async run(): Promise<void> {
+        return this.createProxyService()
+    }
+
     private registerHost: RouteHandler = (req, res) => {
         const { target, host } = req.body as any
         if (this.hosts.get(host)) {
@@ -89,10 +99,13 @@ export class StartCommand implements CommandRunner {
     }
 
     private getEnv: RouteHandler = (req, res) => {
-        void res.status(200).send(this.config.defaultEnv)
+        void res.status(200).send({ ...this.config.defaultEnv, ...this.env })
     }
 
     private getPort: RouteHandler = (req, res) => {
+        const name = (req.params as any).name
+        const port = this.portService.getPort(name)
+        this.env[this.portService.getPortEnv(name)] = port + ''
         void res.status(200).send(this.portService.getPort((req.params as any).name))
     }
 
@@ -124,6 +137,17 @@ export class StartCommand implements CommandRunner {
             ])
         }
 
+        if (this.config.servers) {
+            for (const server of this.config.servers) {
+                this.setHost()(server.to, server.from)
+            }
+        }
+        if (this.config.fallback) {
+            for (const server of this.config.servers) {
+                this.setHost(this.fallbackHosts)(server.to, server.from)
+            }
+        }
+
         return (handler) => {
             const proxy = httpProxy.createProxyServer({
                 followRedirects: false,
@@ -143,13 +167,15 @@ export class StartCommand implements CommandRunner {
             })
 
             const requestHandler = (req: http.IncomingMessage, res: http.ServerResponse) => {
-                const target = this.hosts.get(req.headers.host)
+                const target =
+                    this.hosts.get(req.headers.host) || this.fallbackHosts.get(req.headers.host)
 
                 if (target) {
                     proxy.web(req, res, { target: `http://${target}` })
                     return
                 }
-                if (this.hosts) handler(req, res)
+
+                handler(req, res)
             }
 
             const proxyUpgradeHandler = (req: http.IncomingMessage, socket: Socket, head: any) => {

@@ -44,7 +44,6 @@ export class RunnerConfigService {
 
             a.port = port
             a.env = {
-                ...((await this.axios.get(`/env`))?.data || {}),
                 ...ports,
                 ...(a.env || {}),
             }
