@@ -142,8 +142,8 @@ export class StartCommand implements CommandRunner {
                 this.setHost()(server.to, server.from)
             }
         }
-        if (this.config.fallback) {
-            for (const server of this.config.servers) {
+        if (this.config.fallbackServers) {
+            for (const server of this.config.fallbackServers) {
                 this.setHost(this.fallbackHosts)(server.to, server.from)
             }
         }
