@@ -22,9 +22,16 @@ import { PortService } from '../services/port.service'
 export class StartCommand implements CommandRunner {
     private fastify: FastifyInstance
     private hosts = new Map<string, string>()
+    private fallbackHosts = new Map<string, string>()
     private env: Record<string, string> = {}
 
     constructor(private portService: PortService, @Inject(CONFIG) private config: Config) {}
+
+    private setHost =
+        (hosts = this.hosts) =>
+        (target: string, subdomain: string, host = this.config.host) => {
+            hosts.set(`${subdomain}.${host || this.config.host}:${this.config.port}`, target)
+        }
 
     public async createProxyService() {
         const port = this.config.port
@@ -42,13 +49,10 @@ export class StartCommand implements CommandRunner {
             const io = new Server(server)
 
             io.on('connection', (socket) => {
-                socket.on('app:running', ({ subdomain, target }) => {
+                socket.on('app:running', ({ subdomain, target, host }) => {
                     if (subdomain) {
                         console.log('running', subdomain, target)
-                        this.hosts.set(
-                            `${subdomain}.${this.config.host}:${this.config.port}`,
-                            target,
-                        )
+                        this.setHost()(target, subdomain, host)
                     }
                 })
 
@@ -133,6 +137,17 @@ export class StartCommand implements CommandRunner {
             ])
         }
 
+        if (this.config.servers) {
+            for (const server of this.config.servers) {
+                this.setHost()(server.to, server.from)
+            }
+        }
+        if (this.config.fallback) {
+            for (const server of this.config.servers) {
+                this.setHost(this.fallbackHosts)(server.to, server.from)
+            }
+        }
+
         return (handler) => {
             const proxy = httpProxy.createProxyServer({
                 followRedirects: false,
@@ -152,13 +167,15 @@ export class StartCommand implements CommandRunner {
             })
 
             const requestHandler = (req: http.IncomingMessage, res: http.ServerResponse) => {
-                const target = this.hosts.get(req.headers.host)
+                const target =
+                    this.hosts.get(req.headers.host) || this.fallbackHosts.get(req.headers.host)
 
                 if (target) {
                     proxy.web(req, res, { target: `http://${target}` })
                     return
                 }
-                if (this.hosts) handler(req, res)
+
+                handler(req, res)
             }
 
             const proxyUpgradeHandler = (req: http.IncomingMessage, socket: Socket, head: any) => {

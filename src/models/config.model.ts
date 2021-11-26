@@ -13,6 +13,8 @@ export class Config {
     public privateKey?: string
     public certificate?: string
     public defaultEnv = {}
+    public servers?: Array<{ from: string; to: string }> = []
+    public fallbackServers?: Array<{ from: string; to: string }> = []
 
     public get url(): string {
         return this.getUrl(true)
