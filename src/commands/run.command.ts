@@ -41,10 +41,7 @@ export class RunCommand implements CommandRunner {
         }
 
         const runApp = async (script: string, app: RunnerConfig): Promise<void> => {
-            let env = {
-                ...((await this.axios.get(`/env`))?.data || {}),
-                ...app.env,
-            }
+            let env = (await this.axios.get(`/env`))?.data || {}
 
             if (app.envMappings) {
                 env = this.runnerConfigService.mapEnvVars(env, app.envMappings)
@@ -67,6 +64,7 @@ export class RunCommand implements CommandRunner {
                 env: {
                     ...process.env,
                     ...env,
+                    ...app.env,
                 },
             } as any)
 
